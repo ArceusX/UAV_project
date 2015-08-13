@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
 import os.path
-from scipy.spatial import ConvexHull
+from matplotlib import pyplot as plt
+from matplotlib.patches import Rectangle
 
 def create_background(h,w,px_val=None):
     if px_val is None:
@@ -84,18 +85,24 @@ def add_UAVs_random(n,cls,szs,shps,img):
 	
 	return img.astype('uint8')
 
-def add_UAVs_write_to_file(n,clr,sz,shape,img,file_name):
+def add_UAVs_give_bounding_coordinates(n,clr,sz,shape,img):
+	h,w=np.shape(img)
 	im,coords,tile=add_UAVs(n,clr,sz,shape,img)
-	coords=np.reshape(coords,(sz*sz*tile,2,n))
-	cv2.imwrite(file_name,im)
-	bounding_box=np.empty(shape=(2,2,n))
-	(bounding_box[0,:,:],bounding_box[1,:,:])=np.amin(coords,axis=0),np.amax(coords,axis=0)
-	return bounding_box,im
+	coords=np.reshape(coords,(n,sz*sz*tile,2))
+	bounding_box=np.empty(shape=(n,2,2))
+	(bounding_box[:,0,:],bounding_box[:,1,:])=np.amin(coords,axis=1),np.amax(coords,axis=1)
+	bounding_box[:,:,[0,1]]=bounding_box[:,:,[1,0]]
+	bounding_box=np.reshape(bounding_box,(n,4))
+	bounding_box=bounding_box.clip(0,max(h,w))
+
+	return img,bounding_box
+
+def write_UAVs_to_file(img,bounding_box,file_name):
+	cv2.imwrite(file_name,img)
 	dir_name,f_name=os.path.split(file_name)
 	f_name,f_ext=f_name.split(".")
-	np.savetxt(dir_name+"/"+f_name+"_data.txt",coords,delimiter=" ",newline="\n")
-
-
+	np.savetxt(dir_name+"/"+f_name+"_data.txt",bounding_box,delimiter=" ",newline="\n",fmt="%d")
+	return img,bounding_box
 
 
 def task():
